@@ -11,6 +11,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.jooq.DSLContext;
+import org.jooq.Name;
 import org.jooq.SQLDialect;
 import org.jooq.tools.JooqLogger;
 import org.jooq.util.ArrayDefinition;
@@ -33,6 +34,7 @@ import org.jooq.util.SequenceDefinition;
 import org.jooq.util.TableDefinition;
 import org.jooq.util.UDTDefinition;
 import org.jooq.util.UniqueKeyDefinition;
+import org.jooq.util.jaxb.Catalog;
 import org.jooq.util.jaxb.CustomType;
 import org.jooq.util.jaxb.EnumType;
 import org.jooq.util.jaxb.ForcedType;
@@ -155,12 +157,36 @@ public abstract class BaseVertabeloDatabase implements Database {
 		return database.getSchema(inputName);
 	}
 
+	public List<String> getInputCatalogs() {
+		return database.getInputCatalogs();
+	}
+
 	public final List<String> getInputSchemata() {
 		return database.getInputSchemata();
 	}
 
+	public List<String> getInputSchemata(CatalogDefinition catalog) {
+		return database.getInputSchemata(catalog);
+	}
+
+	public List<String> getInputSchemata(String catalog) {
+		return database.getInputSchemata(catalog);
+	}
+
+	public String getOutputCatalog(String inputCatalog) {
+		return database.getOutputCatalog(inputCatalog);
+	}
+
 	public String getOutputSchema(String inputSchema) {
 		return database.getOutputSchema(inputSchema);
+	}
+
+	public String getOutputSchema(String inputCatalog, String inputSchema) {
+		return database.getOutputSchema(inputCatalog,inputSchema);
+	}
+
+	public final void setConfiguredCatalogs(List<Catalog> catalogs) {
+		database.setConfiguredCatalogs(catalogs);
 	}
 
 	public final void setConfiguredSchemata(List<Schema> schemata) {
@@ -335,6 +361,14 @@ public abstract class BaseVertabeloDatabase implements Database {
 		return database.getOverridePrimaryKeys();
 	}
 
+    public void setSyntheticIdentities(String[] syntheticIdentities) {
+		database.setSyntheticIdentities(syntheticIdentities);
+	}
+
+	public String[] getSyntheticIdentities() {
+		return database.getSyntheticIdentities();
+	}
+
 	public final void setConfiguredEnumTypes(List<EnumType> configuredEnumTypes) {
 		database.setConfiguredEnumTypes(configuredEnumTypes);
 	}
@@ -451,8 +485,24 @@ public abstract class BaseVertabeloDatabase implements Database {
 		return database.getTable(schema, name, ignoreCase);
 	}
 
+	public TableDefinition getTable(SchemaDefinition schema, Name name) {
+		return database.getTable(schema, name);
+	}
+
+	public TableDefinition getTable(SchemaDefinition schema, Name name, boolean ignoreCase) {
+		return database.getTable(schema, name, ignoreCase);
+	}
+
 	public final List<EnumDefinition> getEnums(SchemaDefinition schema) {
 		return database.getEnums(schema);
+	}
+
+    public EnumDefinition getEnum(SchemaDefinition schema, Name name) {
+		return getEnum(schema, name);
+	}
+
+	public EnumDefinition getEnum(SchemaDefinition schema, Name name, boolean ignoreCase) {
+		return getEnum(schema, name, ignoreCase);
 	}
 
 	public final ForcedType getConfiguredForcedType(Definition definition) {
@@ -483,6 +533,14 @@ public abstract class BaseVertabeloDatabase implements Database {
 		return database.getDomain(schema, name, ignoreCase);
 	}
 
+	public DomainDefinition getDomain(SchemaDefinition schema, Name name) {
+		return getDomain(schema, name);
+	}
+
+	public DomainDefinition getDomain(SchemaDefinition schema, Name name, boolean ignoreCase) {
+		return getDomain(schema, name, ignoreCase);
+	}
+
 	public final List<ArrayDefinition> getArrays(SchemaDefinition schema) {
 		return database.getArrays(schema);
 	}
@@ -492,6 +550,14 @@ public abstract class BaseVertabeloDatabase implements Database {
 	}
 
 	public final ArrayDefinition getArray(SchemaDefinition schema, String name, boolean ignoreCase) {
+		return database.getArray(schema, name, ignoreCase);
+	}
+
+	public ArrayDefinition getArray(SchemaDefinition schema, Name name) {
+		return database.getArray(schema, name);
+	}
+
+	public ArrayDefinition getArray(SchemaDefinition schema, Name name, boolean ignoreCase) {
 		return database.getArray(schema, name, ignoreCase);
 	}
 
@@ -507,6 +573,18 @@ public abstract class BaseVertabeloDatabase implements Database {
 		return database.getUDT(schema, name, ignoreCase);
 	}
 
+	public final UDTDefinition getUDT(SchemaDefinition schema, Name name) {
+		return database.getUDT(schema, name);
+	}
+
+	public final UDTDefinition getUDT(SchemaDefinition schema, Name name, boolean ignoreCase) {
+		return database.getUDT(schema, name, ignoreCase);
+	}
+
+	public List<UDTDefinition> getUDTs(PackageDefinition pkg) {
+		return getUDTs(pkg);
+	}
+
 	public final Relations getRelations() {
 		return database.getRelations();
 	}
@@ -519,8 +597,24 @@ public abstract class BaseVertabeloDatabase implements Database {
 		return database.getPackages(schema);
 	}
 
+	public PackageDefinition getPackage(SchemaDefinition schema, String inputName) {
+		return database.getPackage(schema,inputName);
+	}
+
 	public final <T extends Definition> List<T> filterExcludeInclude(List<T> definitions) {
 		return database.filterExcludeInclude(definitions);
+	}
+
+	public List<Definition> getIncluded() {
+		return database.getIncluded();
+	}
+
+	public List<Definition> getExcluded() {
+		return database.getExcluded();
+	}
+
+	public List<Definition> getAll() {
+		return database.getAll();
 	}
 
 	public final boolean isArrayType(String dataType) {

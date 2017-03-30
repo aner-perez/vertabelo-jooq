@@ -6,7 +6,7 @@
     <groupId>com.vertabelo</groupId>
     <artifactId>vertabelo-jooq</artifactId>
     <name>vertabelo-jooq</name>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
     <description>Vertabelo Plugin for jOOQ</description>
     <url>http://www.vertabelo.com</url>
@@ -197,7 +197,7 @@
         <dependency>
             <groupId>org.jooq</groupId>
             <artifactId>jooq-codegen</artifactId>
-            <version>[3.8.0,)</version> <!-- Use versions after 3.8 -->
+            <version>[3.9.0,)</version> <!-- Use versions after 3.9 -->
         </dependency>
 
     </dependencies>
