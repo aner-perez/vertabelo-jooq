@@ -1,5 +1,6 @@
 package com.vertabelo.jooq.v2_2;
 
+import com.vertabelo.jooq.VertabeloModelLoader;
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
 import java.sql.SQLException;
@@ -50,7 +51,7 @@ import org.jooq.util.xml.XMLDatabase;
  *
  * @author Michał Kołodziejski
  */
-public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
+public class VertabeloDatabase extends AbstractDatabase  {
 
     interface TableOperation {
         void invoke(Table table, String schemaName);
@@ -60,46 +61,47 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
         void invoke(View view, String schemaName);
     }
 
-    private static final JooqLogger log = JooqLogger.getLogger(VertabeloDatabase_v2_2.class);
+	private static final JooqLogger log = JooqLogger.getLogger(VertabeloDatabase.class);
 
     // XML additional properties
     private static final String SCHEMA_ADDITIONAL_PROPERTY_NAME = "Schema";
     private static final String PK_ADDITIONAL_PROPERTY_NAME = "Primary key name";
 
-
     protected DatabaseModel databaseModel;
     
-    public VertabeloDatabase_v2_2(String xml) {
-    	super();
-    	try {
-			databaseModel = JAXB.unmarshal(new ByteArrayInputStream(xml.getBytes("UTF-8")), DatabaseModel.class);
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException("Impossible has happen.", e);
-		}
-    }
-
     protected DatabaseModel databaseModel() {
+		if(databaseModel == null) {
+			VertabeloModelLoader loader = new VertabeloModelLoader(getProperties());
+			loader.readXML();
+			String version = loader.getVertabeloXMLVersion();
+			if(!"2.1".equals(version) && !"2.2".equals(version)) {
+				throw new IllegalStateException("This class cannot parse data model version "+version);
+			}
+			try {
+				databaseModel = JAXB.unmarshal(new ByteArrayInputStream(loader.getVertabeloXML().getBytes("UTF-8")), DatabaseModel.class);
+			} catch (UnsupportedEncodingException e) {
+				throw new RuntimeException("Impossible has happen.", e);
+			}
+		}
         return databaseModel;
     }
 
-
     @Override
-    public DSLContext create0() {
+    protected DSLContext create0() {
         SQLDialect dialect = SQLDialect.DEFAULT;
 
         try {
             dialect = SQLDialect.valueOf(getProperties().getProperty(XMLDatabase.P_DIALECT));
-        }
-        catch (Exception ignore) {}
+        } catch (Exception ignore) {
+		}
 
         return DSL.using(dialect);
     }
 
-
     @Override
-    public void loadPrimaryKeys(final DefaultRelations relations) throws SQLException {
+    protected void loadPrimaryKeys(final DefaultRelations relations) throws SQLException {
 
-        filterTablesBySchema(databaseModel().getTables(), new TableOperation() {
+		filterTablesBySchema(databaseModel().getTables(), new TableOperation() {
             @Override
             public void invoke(Table table, String schemaName) {
 
@@ -110,7 +112,7 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
                     String pkName = getTablePkName(table);
 
                     // iterate through all columns and find PK columns
-                    for (Column column : table.getColumns()) {
+					for (Column column : table.getColumns()) {
                         if (column.isPK()) {
                             relations.addPrimaryKey(pkName, tableDefinition.getColumn(column.getName()));
                         }
@@ -122,20 +124,19 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
 
 
     private String getTablePkName(Table table) {
-        Property pkAdditionalProperty = VertabeloDatabase_v2_2.findAdditionalProperty(PK_ADDITIONAL_PROPERTY_NAME,
+        Property pkAdditionalProperty = VertabeloDatabase.findAdditionalProperty(PK_ADDITIONAL_PROPERTY_NAME,
             table.getProperties());
-        String pkName = VertabeloDatabase_v2_2.getAdditionalPropertyValueOrEmpty(pkAdditionalProperty);
+        String pkName = VertabeloDatabase.getAdditionalPropertyValueOrEmpty(pkAdditionalProperty);
         if (StringUtils.isEmpty(pkName)) {
             pkName = table.getName().toUpperCase() + "_PK";
         }
         return pkName;
     }
 
-
     @Override
-    public void loadUniqueKeys(final DefaultRelations relations) throws SQLException {
+    protected void loadUniqueKeys(final DefaultRelations relations) throws SQLException {
 
-        filterTablesBySchema(databaseModel().getTables(), new TableOperation() {
+		filterTablesBySchema(databaseModel().getTables(), new TableOperation() {
             @Override
             public void invoke(Table table, String schemaName) {
                 SchemaDefinition schema = getSchema(schemaName);
@@ -143,11 +144,11 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
 
                 if (tableDefinition != null) {
                     // iterate through all UNIQUE keys for this table
-                    for (AlternateKey alternateKey : table.getAlternateKeys()) {
+					for (AlternateKey alternateKey : table.getAlternateKeys()) {
 
                         // iterate through all columns of this key
-                        for (AlternateKeyColumn alternateKeyColumn : alternateKey.getColumns()) {
-                            Column column = (Column) alternateKeyColumn.getColumn();
+						for (AlternateKeyColumn alternateKeyColumn : alternateKey.getColumns()) {
+							Column column = (Column) alternateKeyColumn.getColumn();
                             relations.addUniqueKey(alternateKey.getName(), tableDefinition.getColumn(column.getName()));
                         }
 
@@ -158,11 +159,10 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
 
     }
 
-
     @Override
-    public void loadForeignKeys(final DefaultRelations relations) throws SQLException {
+    protected void loadForeignKeys(final DefaultRelations relations) throws SQLException {
 
-        for (final Reference reference : databaseModel().getReferences()) {
+		for (final Reference reference : databaseModel().getReferences()) {
             final Table pkTable = (Table) reference.getPKTable();
             final Table fkTable = (Table) reference.getFKTable();
 
@@ -173,14 +173,15 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
                     TableDefinition pkTableDefinition = getTable(schema, pkTable.getName());
                     TableDefinition fkTableDefinition = getTable(schema, fkTable.getName());
 
-                    // we need to find unique key among PK and all alternate keys...
+					// we need to find unique key among PK and all alternate
+					// keys...
                     String uniqueKeyName = findUniqueConstraintNameForReference(reference);
-                    if(uniqueKeyName == null) {
+					if (uniqueKeyName == null) {
                         // no matching key - ignore this foreign key
                         return;
                     }
 
-                    for (ReferenceColumn referenceColumn : reference.getReferenceColumns()) {
+					for (ReferenceColumn referenceColumn : reference.getReferenceColumns()) {
                         Column fkColumn = (Column) referenceColumn.getFKColumn();
                         ColumnDefinition fkColumnDefinition = fkTableDefinition.getColumn(fkColumn.getName());
 
@@ -196,14 +197,12 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
         }
     }
 
-
     private String findUniqueConstraintNameForReference(Reference reference) {
         // list of referenced columns
         List<Column> uniqueKeyColumns = new ArrayList<Column>();
-        for (ReferenceColumn referenceColumn : reference.getReferenceColumns()) {
+		for (ReferenceColumn referenceColumn : reference.getReferenceColumns()) {
             uniqueKeyColumns.add((Column) referenceColumn.getPKColumn());
         }
-
 
         // list of PK columns
         Table pkTable = (Table) reference.getPKTable();
@@ -221,7 +220,7 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
         }
 
         // need to check alternate keys
-        for (AlternateKey alternateKey : pkTable.getAlternateKeys()) {
+		for (AlternateKey alternateKey : pkTable.getAlternateKeys()) {
             List<Column> akColumns = new ArrayList<Column>();
             for (AlternateKeyColumn column : alternateKey.getColumns()) {
                 akColumns.add((Column) column.getColumn());
@@ -239,12 +238,10 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
         return null;
     }
 
-
-
     @Override
-    public void loadCheckConstraints(final DefaultRelations relations) throws SQLException {
+    protected void loadCheckConstraints(final DefaultRelations relations) throws SQLException {
 
-        filterTablesBySchema(databaseModel().getTables(), new TableOperation() {
+		filterTablesBySchema(databaseModel().getTables(), new TableOperation() {
             @Override
             public void invoke(Table table, String schemaName) {
                 SchemaDefinition schema = getSchema(schemaName);
@@ -253,7 +250,7 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
                 if (tableDefinition != null) {
 
                     // iterate through all table checks
-                    for (TableCheck tableCheck : table.getTableChecks()) {
+					for (TableCheck tableCheck : table.getTableChecks()) {
                         CheckConstraintDefinition checkConstraintDefinition = new DefaultCheckConstraintDefinition(
                             schema,
                             tableDefinition,
@@ -264,8 +261,8 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
                     }
 
                     // iterate through all columns and find columns with checks
-                    for (Column column : table.getColumns()) {
-                        if (! StringUtils.isBlank(column.getCheckExpression())) {
+					for (Column column : table.getColumns()) {
+						if (!StringUtils.isBlank(column.getCheckExpression())) {
                             CheckConstraintDefinition checkConstraintDefinition = new DefaultCheckConstraintDefinition(
                                 schema,
                                 tableDefinition,
@@ -281,14 +278,14 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
     }
 
     @Override
-    public List<CatalogDefinition> getCatalogs0() throws SQLException {
+    protected List<CatalogDefinition> getCatalogs0() throws SQLException {
         List<CatalogDefinition> result = new ArrayList<CatalogDefinition>();
         result.add(new CatalogDefinition(this, "", ""));
         return result;
     }
 
     @Override
-    public List<SchemaDefinition> getSchemata0() throws SQLException {
+    protected List<SchemaDefinition> getSchemata0() throws SQLException {
         List<SchemaDefinition> result = new ArrayList<SchemaDefinition>();
         List<String> schemaNames = new ArrayList<String>();
 
@@ -299,11 +296,10 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
         }
 
         // search in views
-        for (View view : databaseModel().getViews()) {
-            Property additionalProperty = findAdditionalProperty(SCHEMA_ADDITIONAL_PROPERTY_NAME, view.getProperties());
+		for (View view : databaseModel().getViews()) {
+			Property additionalProperty = findAdditionalProperty(SCHEMA_ADDITIONAL_PROPERTY_NAME, view.getProperties());
             addUniqueSchemaName(additionalProperty, schemaNames);
         }
-
 
         // transform
         for (String schemaName : schemaNames) {
@@ -312,7 +308,6 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
 
         return result;
     }
-
 
     private void addUniqueSchemaName(Property additionalProperty, List<String> schemaNames) {
         String schemaName = ""; // default to empty string
@@ -326,15 +321,14 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
         }
     }
 
-
     @Override
-    public List<SequenceDefinition> getSequences0() throws SQLException {
+    protected List<SequenceDefinition> getSequences0() throws SQLException {
         List<SequenceDefinition> result = new ArrayList<SequenceDefinition>();
 
-        for (Sequence sequence : databaseModel().getSequences()) {
-            Property additionalProperty = VertabeloDatabase_v2_2.findAdditionalProperty(SCHEMA_ADDITIONAL_PROPERTY_NAME,
-                sequence.getProperties());
-            String schemaName = VertabeloDatabase_v2_2.getAdditionalPropertyValueOrEmpty(additionalProperty);
+		for (Sequence sequence : databaseModel().getSequences()) {
+            Property additionalProperty = findAdditionalProperty(SCHEMA_ADDITIONAL_PROPERTY_NAME,
+					sequence.getProperties());
+			String schemaName = getAdditionalPropertyValueOrEmpty(additionalProperty);
 
             if (getInputSchemata().contains(schemaName)) {
                 SchemaDefinition schema = getSchema(schemaName);
@@ -352,13 +346,12 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
         return result;
     }
 
-
     @Override
-    public List<TableDefinition> getTables0() throws SQLException {
+    protected List<TableDefinition> getTables0() throws SQLException {
         final List<TableDefinition> result = new ArrayList<TableDefinition>();
 
         // tables
-        filterTablesBySchema(databaseModel().getTables(), new TableOperation() {
+		filterTablesBySchema(databaseModel().getTables(), new TableOperation() {
             @Override
             public void invoke(Table table, String schemaName) {
                 SchemaDefinition schema = getSchema(schemaName);
@@ -367,7 +360,7 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
         });
 
         // views
-        filterViewsBySchema(databaseModel().getViews(), new ViewOperation() {
+		filterViewsBySchema(databaseModel().getViews(), new ViewOperation() {
             @Override
             public void invoke(View view, String schemaName) {
                 SchemaDefinition schema = getSchema(schemaName);
@@ -378,49 +371,47 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
         return result;
     }
 
-
     @Override
-    public List<EnumDefinition> getEnums0() {
+    protected List<EnumDefinition> getEnums0() {
         List<EnumDefinition> result = new ArrayList<EnumDefinition>();
         return result;
     }
 
     @Override
-    public List<DomainDefinition> getDomains0() throws SQLException {
+    protected List<DomainDefinition> getDomains0() throws SQLException {
         List<DomainDefinition> result = new ArrayList<DomainDefinition>();
         return result;
     }
 
     @Override
-    public List<UDTDefinition> getUDTs0() {
+    protected List<UDTDefinition> getUDTs0() {
         List<UDTDefinition> result = new ArrayList<UDTDefinition>();
         return result;
     }
 
     @Override
-    public List<ArrayDefinition> getArrays0() {
+    protected List<ArrayDefinition> getArrays0() {
         List<ArrayDefinition> result = new ArrayList<ArrayDefinition>();
         return result;
     }
 
     @Override
-    public List<RoutineDefinition> getRoutines0() {
+    protected List<RoutineDefinition> getRoutines0() {
         List<RoutineDefinition> result = new ArrayList<RoutineDefinition>();
         return result;
     }
 
     @Override
-    public List<PackageDefinition> getPackages0() {
+    protected List<PackageDefinition> getPackages0() {
         List<PackageDefinition> result = new ArrayList<PackageDefinition>();
         return result;
     }
 
-
     protected void filterTablesBySchema(List<Table> tables, TableOperation operation) {
         for (Table table : tables) {
-            Property schemaAdditionalProperty = VertabeloDatabase_v2_2.findAdditionalProperty(SCHEMA_ADDITIONAL_PROPERTY_NAME,
-                table.getProperties());
-            String schemaName = VertabeloDatabase_v2_2.getAdditionalPropertyValueOrEmpty(schemaAdditionalProperty);
+            Property schemaAdditionalProperty = findAdditionalProperty(SCHEMA_ADDITIONAL_PROPERTY_NAME,
+					table.getProperties());
+            String schemaName = getAdditionalPropertyValueOrEmpty(schemaAdditionalProperty);
 
             if (getInputSchemata().contains(schemaName)) {
 
@@ -430,12 +421,11 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
         }
     }
 
-
     protected void filterViewsBySchema(List<View> views, ViewOperation operation) {
         for (View view : views) {
-            Property schemaAdditionalProperty = VertabeloDatabase_v2_2.findAdditionalProperty(SCHEMA_ADDITIONAL_PROPERTY_NAME,
-                view.getProperties());
-            String schemaName = VertabeloDatabase_v2_2.getAdditionalPropertyValueOrEmpty(schemaAdditionalProperty);
+            Property schemaAdditionalProperty = findAdditionalProperty(SCHEMA_ADDITIONAL_PROPERTY_NAME,
+					view.getProperties());
+            String schemaName = getAdditionalPropertyValueOrEmpty(schemaAdditionalProperty);
 
             if (getInputSchemata().contains(schemaName)) {
 
@@ -444,7 +434,6 @@ public class VertabeloDatabase_v2_2 extends AbstractDatabase  {
             }
         }
     }
-
 
     public static Property findAdditionalProperty(String name, List<Property> properties) {
         for (Property property : properties) {

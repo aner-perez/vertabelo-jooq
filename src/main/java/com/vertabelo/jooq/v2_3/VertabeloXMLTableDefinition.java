@@ -134,11 +134,11 @@ public class VertabeloXMLTableDefinition extends AbstractTableDefinition {
         Property additionalProperty;
 
         if(table != null) {
-            additionalProperty = VertabeloDatabase_v2_3.findAdditionalProperty(VertabeloDatabase_v2_3.SCHEMA_ADDITIONAL_PROPERTY_NAME, table.getProperties().getProperty());
+            additionalProperty = VertabeloDatabase.findAdditionalProperty(VertabeloDatabase.SCHEMA_ADDITIONAL_PROPERTY_NAME, table.getProperties().getProperty());
         } else {
-            additionalProperty = VertabeloDatabase_v2_3.findAdditionalProperty(VertabeloDatabase_v2_3.SCHEMA_ADDITIONAL_PROPERTY_NAME, view.getProperties().getProperty());
+            additionalProperty = VertabeloDatabase.findAdditionalProperty(VertabeloDatabase.SCHEMA_ADDITIONAL_PROPERTY_NAME, view.getProperties().getProperty());
         }
 
-        return VertabeloDatabase_v2_3.getAdditionalPropertyValueOrEmpty(additionalProperty);
+        return VertabeloDatabase.getAdditionalPropertyValueOrEmpty(additionalProperty);
     }
 }

@@ -1,5 +1,6 @@
 package com.vertabelo.jooq.v2_3;
 
+import com.vertabelo.jooq.VertabeloModelLoader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.UnsupportedEncodingException;
@@ -53,7 +54,7 @@ import org.jooq.util.xml.XMLDatabase;
  * @author Michał Kołodziejski
  * @author Rafał Strzaliński
  */
-public class VertabeloDatabase_v2_3 extends AbstractDatabase {
+public class VertabeloDatabase extends AbstractDatabase {
 
 	interface TableOperation {
 		void invoke(Table table, String schemaName);
@@ -63,26 +64,26 @@ public class VertabeloDatabase_v2_3 extends AbstractDatabase {
 		void invoke(View view, String schemaName);
 	}
 
-	private static final JooqLogger log = JooqLogger.getLogger(VertabeloDatabase_v2_3.class);
+	private static final JooqLogger log = JooqLogger.getLogger(VertabeloDatabase.class);
 
 	// XML additional properties
 	public static final String SCHEMA_ADDITIONAL_PROPERTY_NAME = "schema";
 
 	protected DatabaseModel databaseModel;
 
-	public VertabeloDatabase_v2_3(String xml) {
-
-		try {
-			databaseModel = JAXB.unmarshal(new ByteArrayInputStream(xml.getBytes("UTF-8")), DatabaseModel.class);
-		} catch (UnsupportedEncodingException e) {
-			throw new RuntimeException("Impossible has happen.", e);
-		}
-	}
-
 	protected DatabaseModel databaseModel() {
-		if (databaseModel == null) {
-			databaseModel = JAXB.unmarshal(new File(getProperties().getProperty(XMLDatabase.P_XML_FILE)),
-					DatabaseModel.class);
+		if(databaseModel == null) {
+			VertabeloModelLoader loader = new VertabeloModelLoader(getProperties());
+			loader.readXML();
+			String version = loader.getVertabeloXMLVersion();
+			if(!"2.3".equals(version)) {
+				throw new IllegalStateException("This class cannot parse data model version "+version);
+			}
+			try {
+				databaseModel = JAXB.unmarshal(new ByteArrayInputStream(loader.getVertabeloXML().getBytes("UTF-8")), DatabaseModel.class);
+			} catch (UnsupportedEncodingException e) {
+				throw new RuntimeException("Impossible has happen.", e);
+			}
 		}
 
 		return databaseModel;
