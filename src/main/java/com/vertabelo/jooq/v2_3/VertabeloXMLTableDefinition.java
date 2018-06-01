@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.jooq.DataType;
 import org.jooq.impl.DefaultDataType;
+import org.jooq.impl.SQLDataType;
 import org.jooq.tools.StringUtils;
 import org.jooq.util.AbstractTableDefinition;
 import org.jooq.util.ColumnDefinition;
@@ -18,6 +19,7 @@ import com.vertabelo.jooq.jaxb.v2_3.Property;
 import com.vertabelo.jooq.jaxb.v2_3.Table;
 import com.vertabelo.jooq.jaxb.v2_3.View;
 import com.vertabelo.jooq.jaxb.v2_3.ViewColumn;
+import org.jooq.exception.SQLDialectNotSupportedException;
 
 /**
  * Definition of the Vertabelo XML Table
@@ -66,7 +68,12 @@ public class VertabeloXMLTableDefinition extends AbstractTableDefinition {
             ++position;
 
             // convert data type
-            DataType<?> dataType = DefaultDataType.getDataType(getDialect(), column.getType());
+            DataType<?> dataType = null;
+            try {
+                dataType = DefaultDataType.getDataType(getDialect(), column.getType());
+            } catch (SQLDialectNotSupportedException e) {
+                dataType = SQLDataType.OTHER;
+            }
 
             DataTypeDefinition type = new DefaultDataTypeDefinition(
                 getDatabase(),

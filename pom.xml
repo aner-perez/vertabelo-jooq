@@ -6,7 +6,7 @@
     <groupId>com.vertabelo</groupId>
     <artifactId>vertabelo-jooq</artifactId>
     <name>vertabelo-jooq</name>
-    <version>1.0.1</version>
+    <version>1.1.1</version>
     <packaging>jar</packaging>
     <description>Vertabelo Plugin for jOOQ</description>
     <url>http://www.vertabelo.com</url>
