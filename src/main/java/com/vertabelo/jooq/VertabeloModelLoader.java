@@ -13,7 +13,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 import org.jooq.tools.JooqLogger;
 import org.jooq.tools.StringUtils;
-import org.jooq.util.xml.XMLDatabase;
+import org.jooq.meta.xml.XMLDatabase;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.InputSource;
