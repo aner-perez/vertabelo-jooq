@@ -60,7 +60,11 @@ public class VertabeloModelLoader {
 
 	public void readXML() {
 		String xml;
-		String xmlFileName = properties.getProperty(XMLDatabase.P_XML_FILE);
+		String xmlFileName = properties.getProperty("xmlFiles",
+            properties.getProperty("xmlFile",
+                properties.getProperty("xml-file")
+            )
+        );
 		String apiToken = properties.getProperty(API_TOKEN_PARAM);
 		String modelId = properties.getProperty(MODEL_ID_PARAM);
 		String tagName = properties.getProperty(TAG_NAME_PARAM);
@@ -69,7 +73,7 @@ public class VertabeloModelLoader {
 		} else if(apiToken != null && modelId != null) {
 			xml = readAPIXML(apiToken, modelId, tagName);
 		} else {
-			throw new IllegalStateException("Either ['"+XMLDatabase.P_XML_FILE+ "'] or ['" + API_TOKEN_PARAM + "' and '"+ MODEL_ID_PARAM +"'] parameters must be specified.");			
+			throw new IllegalStateException("Either ['xmlFiles,xmlFile,xml-file'] or ['" + API_TOKEN_PARAM + "' and '"+ MODEL_ID_PARAM +"'] parameters must be specified.");			
 		}
 		setVertabeloXML(xml);
 	}

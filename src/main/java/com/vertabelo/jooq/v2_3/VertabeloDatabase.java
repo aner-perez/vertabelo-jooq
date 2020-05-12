@@ -94,11 +94,11 @@ public class VertabeloDatabase extends AbstractDatabase {
 		SQLDialect dialect = SQLDialect.DEFAULT;
 
 		try {
-			dialect = SQLDialect.valueOf(getProperties().getProperty(XMLDatabase.P_DIALECT));
+			dialect = SQLDialect.valueOf(getProperties().getProperty("dialect"));
 		} catch (Exception ignore) {
 		}
 
-		return DSL.using(dialect);
+		return DSL.using(dialect.family());
 	}
 
 	@Override
@@ -117,7 +117,7 @@ public class VertabeloDatabase extends AbstractDatabase {
 					PrimaryKey pk = table.getPrimaryKey();
 					for (JAXBElement<Object> o : pk.getColumns().getColumn()) {
 						Column column = (Column) o.getValue();
-						relations.addPrimaryKey(pkName, tableDefinition.getColumn(column.getName()));
+						relations.addPrimaryKey(pkName, tableDefinition, tableDefinition.getColumn(column.getName()));
 					}
 				}
 			}
@@ -136,8 +136,7 @@ public class VertabeloDatabase extends AbstractDatabase {
 	}
 
 	@Override
-	protected void loadUniqueKeys(final DefaultRelations relations) throws SQLException {
-
+	protected void loadUniqueKeys(final DefaultRelations relations) {
 		filterTablesBySchema(databaseModel().getTables().getTable(), new TableOperation() {
 			@Override
 			public void invoke(Table table, String schemaName) {
@@ -151,14 +150,13 @@ public class VertabeloDatabase extends AbstractDatabase {
 						// iterate through all columns of this key
 						for (JAXBElement<Object> o : alternateKey.getColumns().getColumn()) {
 							Column column = (Column) o.getValue();
-							relations.addUniqueKey(alternateKey.getName(), tableDefinition.getColumn(column.getName()));
+							relations.addUniqueKey(alternateKey.getName(), tableDefinition, tableDefinition.getColumn(column.getName()));
 
 						}
 					}
 				}
 			}
 		});
-
 	}
 
 	@Override
@@ -187,8 +185,8 @@ public class VertabeloDatabase extends AbstractDatabase {
 						Column fkColumn = (Column) referenceColumn.getFKColumn();
 						ColumnDefinition fkColumnDefinition = fkTableDefinition.getColumn(fkColumn.getName());
 
-						relations.addForeignKey(reference.getName(), uniqueKeyName, fkColumnDefinition,
-								pkTableDefinition.getSchema());
+						relations.addForeignKey(reference.getName(), fkTableDefinition, fkColumnDefinition,
+							uniqueKeyName, pkTableDefinition);
 					}
 				}
 			});
